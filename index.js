@@ -1,90 +1,39 @@
-const sql = require("mysql2");
-const express = require("express");
+const express = require('express');
+const cors=require('cors')
+
 const app = express();
-const jwt = require("jsonwebtoken");
-let time = new Date();
+
+// Middleware to parse JSON bodies
 app.use(express.json());
-app.listen(4004, () => {
-  console.log("run");
+app.use(cors())
+
+// POST endpoint to calculate total value of products
+app.post('/api/calculate-total', (req, res) => {
+    const products = req.body.products;
+
+    if (!Array.isArray(products)) {
+        return res.status(400).json({ error: 'Invalid data format. Expected an array of products.' });
+    }
+
+    try {
+        const totalValue = products.reduce((acc, product) => {
+            // Validate each product has name, price, and quantity
+            if (!product.name || typeof product.price !== 'number' || typeof product.quantity !== 'number') {
+                throw new Error('Invalid product data');
+            }
+
+            return acc + (product.price * product.quantity);
+        }, 0);
+
+        res.json({ totalValue });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
 });
 
-const db = sql.createConnection({
-  host: "sql12.freesqldatabase.com",
-  user: "sql12651911",
-  password: "ztrhvXHT4w",
-  database: "sql12651911",
+// Start the server
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
 });
 
-app.post("/Login/", async (request, response) => {
-  const { email } = request.body;
-  const token = await jwt.sign(email, "nxtwave");
-  console.log(token);
-  response.send(token);
-});
-app.post("/insert", async (request, response) => {
-  const {
-    userid,
-    user_email,
-    user_password,
-    user_name,
-    user_image,
-    total_orders,
-    created_at,
-    last_logged_in,
-  } = request.body;
-  db.query(
-    `
-     INSERT INTO users (user_id, user_name, user_email, user_password, user_image, total_orders,created_at,last_logged_in)
-    VALUES (?,?,?,?,?,?,?,?)`,
-    [
-      userid,
-      user_email,
-      user_password,
-      user_name,
-      user_image,
-      total_orders,
-      created_at,
-      last_logged_in,
-    ],
-    (err, row) => {
-      if (err) {
-        response.send(err);
-      } else {
-        response.send("added");
-      }
-    }
-  );
-});
-
-app.get("/detail/:id/", (request, response) => {
-  console.log("detail");
-  const { id } = request.params;
-  console.log(id);
-  db.query(`select * from users where user_id=?`, [id], (err, row) => {
-    if (err) {
-      response.send(err);
-    } else {
-      response.send(row);
-    }
-  });
-});
-app.get("/", (request, response) => {
-  db.query(`select * from users`, (err, row) => {
-    if (err) {
-      response.send(err);
-    } else {
-      response.send(row);
-    }
-  });
-});
-
-app.get("/delete/:id", (request, response) => {
-  const { id } = request.params;
-  db.query(`delete from users where user_id=? `, [id], (err, row) => {
-    if (err) {
-      response.send(err);
-    } else {
-      response.send("user deleted");
-    }
-  });
-});
